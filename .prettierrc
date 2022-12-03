@@ -7,5 +7,7 @@
   "bracketSpacing": false,
   "trailingComma": "none",
   "arrowParens": "avoid",
-  "plugins": ["./twitch-streamer-discoverer-extension/node_modules/prettier-plugin-tailwindcss"]
+  "plugins": [
+    "./twitch-streamer-discoverer-extension/node_modules/prettier-plugin-tailwindcss"
+  ]
 }
