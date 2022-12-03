@@ -1,5 +1,5 @@
-import { storage } from "../storage";
+import {storage} from '../storage'
 
-chrome.runtime.onInstalled.addListener(() => {
-    storage.get().then(console.log);
-});
+// chrome.runtime.onInstalled.addListener(() => {
+//     storage.get().then(console.log);
+// });
