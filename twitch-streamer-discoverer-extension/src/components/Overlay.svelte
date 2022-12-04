@@ -1,5 +1,5 @@
 <script lang="ts">
-  import ExtensionApp from './ExtensionApp.svelte'
+  import ExtensionApp from './PostTokenApp.svelte'
 </script>
 
 <div class="overlay">
