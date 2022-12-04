@@ -1,12 +1,14 @@
 import type {ApiCategoryItem} from './components/functions/getApiCategories'
 
 type IStorage = {
+  bearerToken?: string
   viewersMin?: number
   viewersMax?: number
   chosenCategories?: ApiCategoryItem[]
 }
 
 const defaultStorage: IStorage = {
+  bearerToken: '',
   viewersMin: 0,
   viewersMax: 0,
   chosenCategories: []
