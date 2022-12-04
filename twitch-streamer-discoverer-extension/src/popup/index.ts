@@ -1,12 +1,13 @@
-import Options from "src/components/Options.svelte";
-import { storage } from "src/storage";
+import App from '../components/App.svelte'
+import {storage} from '../storage'
 
-const target = document.getElementById("app");
+const target = document.getElementById('app')
 
 function render() {
-    storage.get().then(({ count }) => {
-        new Options({ target, props: { count } });
-    });
+  storage.get().then(() => {
+    // @ts-ignore
+    new App({target})
+  })
 }
 
-document.addEventListener("DOMContentLoaded", render);
+document.addEventListener('DOMContentLoaded', render)
