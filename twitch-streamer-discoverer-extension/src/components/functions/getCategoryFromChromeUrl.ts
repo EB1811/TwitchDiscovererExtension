@@ -11,7 +11,6 @@ const getCategoryFromChromeUrl = async (
   )[0]?.url
   if (!tabUrl?.includes('twitch.tv/directory/game/')) return
 
-  // 🙃
   const categoryName: string = decodeURIComponent(
     tabUrl.split('twitch.tv/directory/game/')[1]?.split('?')[0] ?? ''
   )
