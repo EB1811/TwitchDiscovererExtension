@@ -5,19 +5,18 @@
   import getTwitchAuthFlowToken from './functions/getTwitchAuthFlowToken'
   import PostTokenApp from './PostTokenApp.svelte'
   import validateAuthToken from './functions/validateAuthToken'
+  import getBearerOAuthToken from './functions/getBearerOAuthToken'
 
   let isLoading: boolean = true
-  let isAuthorized: boolean = false
-  let bearerToken: string = ''
+  let isAuthorized: boolean = true
 
   onMount(async () => {
     const getValidBearerToken = async () => {
-      const {bearerToken: storedBearer} = await storage.get()
+      const {bearerToken} = await storage.get()
 
-      if (storedBearer) {
-        const isValid = await validateAuthToken(storedBearer)
+      if (bearerToken) {
+        const isValid = await validateAuthToken(bearerToken)
         if (isValid) {
-          bearerToken = storedBearer
           isAuthorized = true
         } else {
           storage.set({bearerToken: ''})
@@ -30,7 +29,20 @@
   })
 
   const launchTwitchAuthFlow = async (): Promise<void> => {
-    bearerToken = await getTwitchAuthFlowToken(true)
+    try {
+      // Easier local development.
+      const newToken = await getBearerOAuthToken()
+
+      // const newToken = await getTwitchAuthFlowToken(true)
+      const isValid = await validateAuthToken(newToken)
+
+      if (newToken && isValid) {
+        storage.set({bearerToken: newToken})
+        isAuthorized = true
+      }
+    } catch (error) {
+      console.log('User did not authorize.')
+    }
   }
 </script>
 
@@ -61,7 +73,7 @@
           <span class="sr-only">Loading...</span>
         </div>
       {:else if isAuthorized}
-        <PostTokenApp {bearerToken} />
+        <PostTokenApp bind:isAuthorized />
       {:else}
         <div class="flex">
           <button
