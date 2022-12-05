@@ -1,12 +1,13 @@
 <script lang="ts">
   import {storage} from '../storage'
-  import type {ApiCategoryItem} from './functions/getApiCategories'
+  import type {ApiCategoryItem} from './functions/getApiCategoriesByName'
   import getApiCategoriesByName from './functions/getApiCategoriesByName'
 
   // import type {ApiCategoryItem} from './functions/getApiCategories'
   // import getApiCategoriesByName from './functions/getApiCategoriesByName'
 
-  export let bearerToken: string
+  export let isAuthorized: boolean
+  export let errorMessage: string
   export let chosenCategories: ApiCategoryItem[] = []
 
   let searchTerm: string = ''
@@ -16,20 +17,33 @@
   let suggestionsTimer: ReturnType<typeof setTimeout>
 
   const setSuggestionsFromApi = async (): Promise<void> => {
+    const {bearerToken} = await storage.get()
+    if (!bearerToken) {
+      isAuthorized = false
+      return
+    }
+
     if (!waitingForApi && searchTerm.length > 3) {
       clearTimeout(suggestionsTimer)
       suggestionsTimer = setTimeout(async () => {
-        console.log('searching for categories')
-        waitingForApi = true
-        suggestedCategories = (
-          await getApiCategoriesByName(bearerToken, searchTerm)
-        ).filter(
-          category =>
-            !chosenCategories.find(
-              chosenCategory => chosenCategory.id === category.id
-            )
-        )
-        waitingForApi = false
+        try {
+          console.log('searching for categories')
+          waitingForApi = true
+
+          suggestedCategories = (
+            await getApiCategoriesByName(bearerToken, searchTerm)
+          ).filter(
+            category =>
+              !chosenCategories.find(
+                chosenCategory => chosenCategory.id === category.id
+              )
+          )
+          waitingForApi = false
+        } catch (error) {
+          console.log(error)
+          errorMessage =
+            error instanceof Error ? error.message : 'Error from server'
+        }
       }, 300)
     }
     if (searchTerm.length < 3) {
