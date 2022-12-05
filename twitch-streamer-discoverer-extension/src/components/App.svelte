@@ -51,7 +51,7 @@
   <h1 class="w-full p-4 text-center text-xl font-bold text-violet-600">
     Twitch Streamer Discoverer
   </h1>
-  <main class="mt-3 flex flex-col items-center justify-center">
+  <main class="flex flex-col items-center justify-center">
     <div class="w-full max-w-4xl px-6">
       {#if isLoading}
         <div class="flex">
@@ -75,7 +75,7 @@
       {:else if isAuthorized}
         <PostTokenApp bind:isAuthorized />
       {:else}
-        <div class="flex">
+        <div class="mt-3 flex">
           <button
             class="mx-auto rounded bg-violet-600 py-2 px-4 font-bold text-white transition-all duration-100 hover:bg-violet-700"
             on:click={launchTwitchAuthFlow}>Authorize</button
