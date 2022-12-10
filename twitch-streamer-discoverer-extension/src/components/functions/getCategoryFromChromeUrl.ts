@@ -2,7 +2,8 @@ import type {ApiCategoryItem} from './getApiCategoriesByName'
 import getApiCategoriesByName from './getApiCategoriesByName'
 
 const getCategoryFromChromeUrl = async (
-  bearerToken: string
+  bearerToken: string,
+  currentCategories?: ApiCategoryItem[]
 ): Promise<ApiCategoryItem | undefined> => {
   console.log('getting category from chrome url')
 
@@ -16,6 +17,14 @@ const getCategoryFromChromeUrl = async (
   )
   if (!categoryName) return
   console.log('categoryName', categoryName)
+
+  if (
+    currentCategories &&
+    currentCategories.find(
+      (category: ApiCategoryItem) => category.name === categoryName
+    )
+  )
+    return
 
   const category: ApiCategoryItem | undefined = (
     await getApiCategoriesByName(bearerToken, categoryName)
