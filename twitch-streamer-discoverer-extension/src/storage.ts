@@ -1,17 +1,29 @@
-import type {ApiCategoryItem} from './components/functions/getApiCategories'
+import type {ApiCategoryItem} from './components/functions/getApiCategoriesByName'
 
 type IStorage = {
   bearerToken?: string
+  showAdvancedOptions?: boolean
+  mode?: 'LINK' | 'GOTO' | 'TIMER_GOTO' | ''
   viewersMin?: number
   viewersMax?: number
+  wantedCountdownTime?: number
   chosenCategories?: ApiCategoryItem[]
+  developerMode?: boolean
+  clientId?: string
+  clientSecret?: string
 }
 
 const defaultStorage: IStorage = {
   bearerToken: '',
+  showAdvancedOptions: false,
+  mode: '',
   viewersMin: 0,
   viewersMax: 0,
-  chosenCategories: []
+  wantedCountdownTime: 0,
+  chosenCategories: [],
+  developerMode: false,
+  clientId: '',
+  clientSecret: ''
 }
 
 export const storage = {
