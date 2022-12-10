@@ -1,5 +1,5 @@
 {
-  "name": "twitch-streamer-discoverer-extension",
+  "name": "Twitch Stream Finder",
   "description": "Chrome Extension to discover Twitch streamers.",
   "version": "1.0",
   "manifest_version": 3,
