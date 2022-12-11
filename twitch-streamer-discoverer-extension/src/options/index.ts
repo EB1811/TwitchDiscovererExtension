@@ -1,4 +1,4 @@
-import App from '../components/App.svelte'
+import OptionsApp from '../components/OptionsApp.svelte'
 import {storage} from '../storage'
 
 const target = document.getElementById('app')
@@ -6,7 +6,7 @@ const target = document.getElementById('app')
 function render() {
   storage.get().then(() => {
     // @ts-ignore
-    new App({target})
+    new OptionsApp({target})
   })
 }
 
