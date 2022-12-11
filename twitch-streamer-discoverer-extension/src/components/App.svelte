@@ -30,10 +30,12 @@
 
   const launchTwitchAuthFlow = async (): Promise<void> => {
     try {
-      // Easier local development.
-      const newToken = await getBearerOAuthToken()
+      const {clientId, clientSecret} = await storage.get()
+      const newToken =
+        clientId && clientSecret
+          ? await getBearerOAuthToken(clientId, clientSecret)
+          : await getTwitchAuthFlowToken(true)
 
-      // const newToken = await getTwitchAuthFlowToken(true)
       const isValid = await validateAuthToken(newToken)
 
       if (newToken && isValid) {
@@ -49,14 +51,14 @@
 <TailwindCss />
 <div class="w-80 bg-neutral-900">
   <h1 class="w-full p-4 text-center text-xl font-bold text-violet-600">
-    Twitch Streamer Discoverer
+    Twitch Stream Finder
   </h1>
   <main class="flex flex-col items-center justify-center">
     <div class="w-full max-w-4xl px-6">
       {#if isLoading}
         <div class="flex">
           <svg
-            class="mx-auto inline h-5 w-5 animate-spin fill-violet-600 text-gray-200 dark:text-gray-600"
+            class="mx-auto inline h-5 w-5 animate-spin fill-violet-600 text-gray-200"
             viewBox="0 0 100 101"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -77,7 +79,8 @@
       {:else}
         <div class="mt-3 flex">
           <button
-            class="mx-auto rounded bg-violet-600 py-2 px-4 font-bold text-white transition-all duration-100 hover:bg-violet-700"
+            class="mx-auto rounded bg-violet-600 py-2 px-4 font-bold text-white transition-all duration-100
+             hover:bg-violet-700"
             on:click={launchTwitchAuthFlow}>Authorize</button
           >
         </div>
@@ -85,14 +88,15 @@
     </div>
   </main>
   <footer
-    class="mt-5 w-full bg-violet-800 py-2 px-4 text-center text-xs font-semibold text-gray-50 transition-colors duration-500"
+    class="mt-5 w-full bg-violet-800 py-2 px-4 text-center text-xs font-semibold text-gray-50 
+    transition-colors duration-500"
   >
     <a
       class="text-gray-50 transition-colors duration-100 hover:text-blue-200"
-      href="https://eb1811.github.io"
+      href="https://github.com/EB1811/TwitchDiscovererExtension"
       target="_blank"
       rel="noopener noreferrer"
-      >Made by <span class="underline">Emmanuil B.</span></a
+      >Made by Emmanuil B. <span class="underline">Github</span></a
     >
   </footer>
 </div>
