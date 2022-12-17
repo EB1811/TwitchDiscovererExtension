@@ -8,6 +8,7 @@ type IStorage = {
   viewersMax?: number
   wantedCountdownTime?: number
   chosenCategories?: ApiCategoryItem[]
+  linkType?: 'STREAM' | 'CLIP' | 'HIGHLIGHT'
   developerMode?: boolean
   clientId?: string
   clientSecret?: string
@@ -21,6 +22,7 @@ const defaultStorage: IStorage = {
   viewersMax: 0,
   wantedCountdownTime: 0,
   chosenCategories: [],
+  linkType: 'STREAM',
   developerMode: false,
   clientId: '',
   clientSecret: ''
