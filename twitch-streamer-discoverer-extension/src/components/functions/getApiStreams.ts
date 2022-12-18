@@ -1,4 +1,5 @@
-import fetchWithError from './FetchWIthError'
+import fetchWithError from './fetchWIthError'
+import getApiItems from './getApiItems'
 import getStreamsParams from './getStreamsParams'
 
 export type ApiStreamItem = {
@@ -18,45 +19,21 @@ export type ApiStreamItem = {
   is_mature?: boolean
 }
 
-export type ApiGetStreamsData = {
-  data?: ApiStreamItem[]
-  pagination?: {
-    cursor?: string
-  }
-}
-
 const getApiStreams = async (
   bearerToken: string,
   categories?: string[],
   languages?: string[],
   cursor?: string
 ): Promise<ApiStreamItem[]> => {
-  const url = `https://api.twitch.tv/helix/streams`
+  console.log('getting api streams')
 
-  const urlWithParams = `${url}?${getStreamsParams(
-    categories,
-    languages,
-    cursor
-  )}`
-  const res = await fetchWithError<ApiGetStreamsData>(urlWithParams, {
-    method: 'GET',
-    headers: {
-      'Client-ID': import.meta.env.VITE_TWITCH_CLIENT_ID,
-      Authorization: `Bearer ${bearerToken}`
-    }
-  })
+  const apiCategories = await getApiItems<ApiStreamItem>(
+    bearerToken,
+    `https://api.twitch.tv/helix/streams`,
+    getStreamsParams(categories, languages)
+  )
 
-  return res.pagination?.cursor
-    ? [
-        ...(res.data ?? []),
-        ...(await getApiStreams(
-          bearerToken,
-          categories,
-          languages,
-          res.pagination?.cursor
-        ))
-      ]
-    : res.data ?? []
+  return apiCategories
 }
 
 export default getApiStreams
