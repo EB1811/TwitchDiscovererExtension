@@ -1,4 +1,4 @@
-import fetchWithError from './FetchWIthError'
+import getApiItems from './getApiItems'
 
 export type ApiCategoryItem = {
   id?: string
@@ -6,30 +6,19 @@ export type ApiCategoryItem = {
   box_art_url?: string
 }
 
-export type ApiGetCategoriesData = {
-  data?: ApiCategoryItem[]
-  pagination?: {
-    cursor?: string
-  }
-}
-
 const getApiCategoriesByName = async (
   bearerToken: string,
   name: string
 ): Promise<ApiCategoryItem[]> => {
   console.log('getting api categories by name')
-  const url = `https://api.twitch.tv/helix/search/categories`
 
-  const urlWithQuery = `${url}?query=${name}`
-  const res = await fetchWithError<ApiGetCategoriesData>(urlWithQuery, {
-    method: 'GET',
-    headers: {
-      'Client-ID': import.meta.env.VITE_TWITCH_CLIENT_ID,
-      Authorization: `Bearer ${bearerToken}`
-    }
-  })
+  const apiCategories = await getApiItems<ApiCategoryItem>(
+    bearerToken,
+    `https://api.twitch.tv/helix/search/categories`,
+    `query=${name}`
+  )
 
-  return res.data ?? []
+  return apiCategories
 }
 
 export default getApiCategoriesByName
