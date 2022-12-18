@@ -1,12 +1,10 @@
 const getStreamsParams = (
   categories?: string[],
-  languages?: string[],
-  cursor?: string
+  languages?: string[]
 ): string => {
   const basicParams: {readonly [key: string]: string} = {
     first: '100',
-    type: 'live',
-    ...(cursor ? {after: cursor} : {})
+    type: 'live'
   }
   const basicParamsString: string = Object.keys(basicParams)
     .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(basicParams[k])}`)
