@@ -88,7 +88,7 @@
     </div>
   </main>
   <footer
-    class="mt-5 w-full bg-violet-800 py-2 px-4 text-center text-xs font-semibold text-gray-50 
+    class="mt-5 w-full bg-violet-600 py-2 px-4 text-center text-xs font-semibold text-gray-50 
     transition-colors duration-500"
   >
     <a
