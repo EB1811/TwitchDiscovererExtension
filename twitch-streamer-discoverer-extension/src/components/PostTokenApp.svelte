@@ -2,18 +2,22 @@
   import {storage} from '../storage'
   import {onMount} from 'svelte'
   import CategorySelect from './CategorySelect.svelte'
-  import getRandomStreamUrl from './functions/getRandomStreamUrl'
+  import getRandomStream from './functions/getRandomStream'
   import type {ApiCategoryItem} from './functions/getApiCategoriesByName'
   import getCategoryFromChromeUrl from './functions/getCategoryFromChromeUrl'
+  import type {ApiStreamItem} from './functions/getApiStreams'
+  import type {ApiClipItem} from './functions/getRandomUserClip'
+  import getRandomStreamClip from './functions/getRandomStreamClip'
+  import getRandomStreamHighlight from './functions/getRandomStreamHighlight'
+  import type {ApiHighlightItem} from './functions/getRandomUserHighlight'
 
   // This got complicated 😂
   // TODO: Refactor to use stores, smaller components, more functional, ect.
 
   export let isAuthorized: boolean
 
-  let randomStreamUrl: string = ''
-
-  let chosenCategories: ApiCategoryItem[] = []
+  let isLoading: boolean = false
+  let errorMessage: string = ''
 
   let showAdvancedOptions: boolean = false
   let mode: 'LINK' | 'GOTO' | 'TIMER_GOTO' = 'TIMER_GOTO'
@@ -21,7 +25,16 @@
   let viewersMax: number | undefined
   let wantedCountdownTime: number = 30
 
-  let errorMessage: string = ''
+  let chosenCategories: ApiCategoryItem[] = []
+
+  const linkTypeOrder: ('STREAM' | 'CLIP' | 'HIGHLIGHT')[] = [
+    'STREAM',
+    'CLIP',
+    'HIGHLIGHT'
+  ]
+  let linkType: 'STREAM' | 'CLIP' | 'HIGHLIGHT' = 'STREAM'
+
+  let randomUrl: string = ''
 
   let countdownSeconds: number
   let newStreamTimer: ReturnType<typeof setTimeout> | undefined
@@ -42,19 +55,15 @@
       if (storedOptions.viewersMax) viewersMax = storedOptions.viewersMax
       if (storedOptions.wantedCountdownTime)
         wantedCountdownTime = storedOptions.wantedCountdownTime
+      if (storedOptions.linkType) linkType = storedOptions.linkType
     }
     setOptionsFromStorage()
   })
 
   onMount(() => {
     const addCategoryFromUrl = async () => {
-      try {
-        const {bearerToken, chosenCategories: storedCategories} =
-          await storage.get()
-        if (!bearerToken) {
-          isAuthorized = false
-          return
-        }
+      withHandle(async bearerToken => {
+        const {chosenCategories: storedCategories} = await storage.get()
 
         const urlCategory: ApiCategoryItem | undefined =
           await getCategoryFromChromeUrl(bearerToken, storedCategories)
@@ -66,47 +75,67 @@
           chosenCategories = [...chosenCategories, urlCategory]
           storage.set({chosenCategories})
         }
-      } catch (error) {
-        console.log(error)
-        errorMessage =
-          error instanceof Error ? error.message : 'Error from server'
-      }
+      })
     }
     addCategoryFromUrl()
   })
 
-  const validate = (): void => {
-    if (chosenCategories.length <= 0) {
-      errorMessage = 'Select at least one category'
-      randomStreamUrl = ''
-      return
-    }
-    errorMessage = ''
+  const advanceLinkType = (): void => {
+    const currentLinkTypeIndex = linkTypeOrder.indexOf(linkType)
+    const nextLinkTypeIndex =
+      currentLinkTypeIndex + 1 >= linkTypeOrder.length
+        ? 0
+        : currentLinkTypeIndex + 1
+    linkType = linkTypeOrder[nextLinkTypeIndex]
+    storage.set({linkType})
   }
+
+  const getRandomUrlFunction = (): (() => Promise<void>) =>
+    linkType === 'STREAM'
+      ? getRandomStreamUrl
+      : linkType === 'CLIP'
+      ? getRandomClipUrl
+      : linkType === 'HIGHLIGHT'
+      ? getRandomHighlightUrl
+      : getRandomStreamUrl
 
   // TODO: Put timer in own component
   const startFindStreamCountdown = (): void => {
     resetNewStreamIntervalLoop()
-    randomStreamUrl = ''
-    setRandomStreamUrl()
-    newStreamTimer = setTimeout(startNewStreamIntervalLoop, 1000)
+    randomUrl = ''
+
+    const randomUrlFunc = getRandomUrlFunction()
+    randomUrlFunc()
+
+    newStreamTimer = setTimeout(
+      () => startNewStreamIntervalLoop(randomUrlFunc),
+      1000
+    )
   }
 
   const extendFindStreamCountdown = (): void => {
     if (countdownSeconds < 10000) countdownSeconds += wantedCountdownTime
   }
 
-  const startNewStreamIntervalLoop = async (): Promise<void> => {
+  const startNewStreamIntervalLoop = async (
+    randomUrlFunc: () => Promise<void>
+  ): Promise<void> => {
     if (errorMessage) return
 
     countdownSeconds -= 1
 
     if (countdownSeconds > 0) {
-      newStreamTimer = setTimeout(startNewStreamIntervalLoop, 1000)
+      newStreamTimer = setTimeout(
+        () => startNewStreamIntervalLoop(randomUrlFunc),
+        1000
+      )
     } else {
-      setRandomStreamUrl()
-      countdownSeconds = 10
-      newStreamTimer = setTimeout(startNewStreamIntervalLoop, 1000)
+      randomUrlFunc()
+      countdownSeconds = wantedCountdownTime
+      newStreamTimer = setTimeout(
+        () => startNewStreamIntervalLoop(randomUrlFunc),
+        1000
+      )
     }
   }
 
@@ -115,7 +144,10 @@
       clearTimeout(newStreamTimer)
       newStreamTimer = undefined
     } else {
-      newStreamTimer = setTimeout(startNewStreamIntervalLoop, 1000)
+      newStreamTimer = setTimeout(
+        () => startNewStreamIntervalLoop(getRandomUrlFunction()),
+        1000
+      )
     }
   }
 
@@ -124,10 +156,18 @@
     if (newStreamTimer) clearTimeout(newStreamTimer)
   }
 
-  const setRandomStreamUrl = async (): Promise<void> => {
-    validate()
-    if (errorMessage) return
+  const validate = (): void => {
+    if (chosenCategories.length <= 0) {
+      errorMessage = 'Select at least one category'
+      randomUrl = ''
+      return
+    }
+    errorMessage = ''
+  }
 
+  const withHandle = async (
+    fn: (bearerToken: string) => Promise<void>
+  ): Promise<void> => {
     try {
       const {bearerToken} = await storage.get()
       if (!bearerToken) {
@@ -135,7 +175,24 @@
         return
       }
 
-      const streamUrl = await getRandomStreamUrl({
+      isLoading = true
+      await fn(bearerToken)
+    } catch (error) {
+      console.log('new ERROR', error)
+      errorMessage =
+        error instanceof Error ? error.message : 'Error from server'
+      randomUrl = ''
+    }
+
+    isLoading = false
+  }
+
+  const getRandomStreamUrl = async (): Promise<void> => {
+    withHandle(async bearerToken => {
+      validate()
+      if (errorMessage) return
+
+      const randomStream: ApiStreamItem = await getRandomStream({
         bearerToken,
         viewersMin,
         viewersMax,
@@ -145,17 +202,68 @@
         languages: ['en']
       })
 
-      if (mode.includes('LINK')) randomStreamUrl = streamUrl
+      if (mode.includes('LINK'))
+        randomUrl = `https://twitch.tv/${randomStream.user_login}`
       if (mode.includes('GOTO'))
         chrome.tabs.update({
-          url: streamUrl
+          url: `https://twitch.tv/${randomStream.user_login}`
         })
-    } catch (error) {
-      console.log('new ERROR', error)
-      errorMessage =
-        error instanceof Error ? error.message : 'Error from server'
-      randomStreamUrl = ''
-    }
+    })
+  }
+
+  const getRandomClipUrl = async (): Promise<void> => {
+    withHandle(async bearerToken => {
+      validate()
+      if (errorMessage) return
+
+      const randomClip: ApiClipItem | undefined = await getRandomStreamClip({
+        bearerToken,
+        randomStreamParams: {
+          bearerToken,
+          viewersMin,
+          viewersMax,
+          categories: chosenCategories
+            .filter(category => category.id)
+            .map(category => category.id!),
+          languages: ['en']
+        }
+      })
+
+      if (mode.includes('LINK'))
+        randomUrl = `https://twitch.tv/${randomClip.broadcaster_name}/clip/${randomClip.id}`
+      if (mode.includes('GOTO'))
+        chrome.tabs.update({
+          url: `https://twitch.tv/${randomClip.broadcaster_name}/clip/${randomClip.id}`
+        })
+    })
+  }
+
+  const getRandomHighlightUrl = async (): Promise<void> => {
+    withHandle(async bearerToken => {
+      validate()
+      if (errorMessage) return
+
+      const randomHighlight: ApiHighlightItem | undefined =
+        await getRandomStreamHighlight({
+          bearerToken,
+          randomStreamParams: {
+            bearerToken,
+            viewersMin,
+            viewersMax,
+            categories: chosenCategories
+              .filter(category => category.id)
+              .map(category => category.id!),
+            languages: ['en']
+          }
+        })
+
+      if (mode.includes('LINK'))
+        randomUrl = `https://twitch.tv/videos/${randomHighlight.id}`
+      if (mode.includes('GOTO'))
+        chrome.tabs.update({
+          url: `https://twitch.tv/videos/${randomHighlight.id}`
+        })
+    })
   }
 </script>
 
@@ -269,23 +377,76 @@
   <div
     class="mt-5 flex flex-grow flex-col items-center justify-center py-2 lg:mt-6"
   >
-    <button
-      class="rounded bg-violet-600 py-2 px-4 font-bold text-white transition-all duration-100
+    <div class="relative flex w-full">
+      <button class="absolute left-10 h-full " on:click={advanceLinkType}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 512 512"
+          stroke="currentColor"
+          class="h-3 w-3 fill-gray-400 transition-colors duration-100 hover:fill-violet-500"
+        >
+          <path
+            d="M0 224c0 17.7 14.3 32 32 32s32-14.3 32-32c0-53 43-96 96-96H320v32c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l64-64c12.5-12.5 12.5-32.8 0-45.3l-64-64c-9.2-9.2-22.9-11.9-34.9-6.9S320 19.1 320 32V64H160C71.6 64 0 135.6 0 224zm512 64c0-17.7-14.3-32-32-32s-32 14.3-32 32c0 53-43 96-96 96H192V352c0-12.9-7.8-24.6-19.8-29.6s-25.7-2.2-34.9 6.9l-64 64c-12.5 12.5-12.5 32.8 0 45.3l64 64c9.2 9.2 22.9 11.9 34.9 6.9s19.8-16.6 19.8-29.6V448H352c88.4 0 160-71.6 160-160z"
+          />
+        </svg>
+      </button>
+      {#if linkType === 'STREAM'}
+        <button
+          class="mx-auto w-36 rounded bg-violet-600 py-2 font-bold text-white transition-all duration-100
        hover:bg-violet-700"
-      on:click={mode.includes('TIMER')
-        ? startFindStreamCountdown
-        : setRandomStreamUrl}>Get Random Stream</button
-    >
-    <div class="mt-1 h-6">
-      {#if errorMessage}
+          on:click={mode.includes('TIMER')
+            ? startFindStreamCountdown
+            : getRandomStreamUrl}>Get Random Stream</button
+        >
+      {:else if linkType === 'CLIP'}
+        <button
+          class="mx-auto w-36 rounded bg-violet-600 py-2 font-bold text-white transition-all duration-100
+     hover:bg-violet-700"
+          on:click={mode.includes('TIMER')
+            ? startFindStreamCountdown
+            : getRandomClipUrl}>Get Random Clip</button
+        >
+      {:else if linkType === 'HIGHLIGHT'}
+        <button
+          class="mx-auto w-36 rounded bg-violet-600 py-2 font-bold text-white transition-all duration-100
+     hover:bg-violet-700"
+          on:click={mode.includes('TIMER')
+            ? startFindStreamCountdown
+            : getRandomHighlightUrl}>Get Random Highlight</button
+        >
+      {/if}
+    </div>
+    <div class="mt-1 flex h-6 max-w-xs justify-center px-6">
+      {#if isLoading}
+        <div class="mt-2">
+          <svg
+            class="mx-auto inline h-5 w-5 animate-spin fill-violet-600 text-gray-200"
+            viewBox="0 0 100 101"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+              fill="currentColor"
+            />
+            <path
+              d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+              fill="currentFill"
+            />
+          </svg>
+          <span class="sr-only">Loading...</span>
+        </div>
+      {:else if errorMessage}
         <div class="text-lg font-bold text-red-500">{errorMessage}</div>
-      {:else if randomStreamUrl}
-        <h1 class="text-lg font-bold">
+      {:else if randomUrl}
+        <h1
+          class="overflow-hidden overflow-ellipsis whitespace-nowrap text-lg font-bold text-blue-500 "
+        >
           <a
-            class="text-blue-500 hover:text-blue-700"
-            href={randomStreamUrl}
+            class="text-blue-500 hover:text-blue-600"
+            href={randomUrl}
             target="_blank"
-            rel="noopener noreferrer">{randomStreamUrl}</a
+            rel="noopener noreferrer">{randomUrl.split('https://')[1]}</a
           >
         </h1>
       {:else if countdownSeconds}
